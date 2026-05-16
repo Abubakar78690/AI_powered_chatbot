@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -48,6 +49,21 @@ const Chat = () => {
       
       if (!data.error) {
         setMessages(prev => [...prev, { text: data.message, isAi: true }]);
+        
+        // Store conversation in Firebase (Frontend side)
+        try {
+          if (auth.currentUser) {
+            await addDoc(collection(db, 'messages'), {
+              userId: auth.currentUser.uid,
+              message: userMessage,
+              response: data.message,
+              timestamp: serverTimestamp()
+            });
+            console.log('Message stored in Firestore successfully from frontend');
+          }
+        } catch (dbErr) {
+          console.error('Error storing message in Firestore:', dbErr);
+        }
       } else {
         setMessages(prev => [...prev, { text: data.error, isAi: true }]);
       }
